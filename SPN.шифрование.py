@@ -54,7 +54,6 @@ def apply_pbox(bits: str, pbox: list[int]) -> str:
     return ''.join(out)
 
 def substitute_bytes(data: bytes, sbox: list[int]) -> bytes:
-    """Заменяет каждый байт целиком через таблицу (AES S-box работает так)."""
     return bytes(sbox[b] for b in data)
 
 def xor_bytes(b1: bytes, b2: bytes) -> bytes:
@@ -69,16 +68,12 @@ def generate_random_iv_bytes() -> bytes:
 # 3. Генерация раундовых ключей
 
 def rotate_left_bytes(data: bytes, n_bits: int) -> bytes:
-    """Циклический сдвиг 8-байтового значения влево на n_bits."""
     val = int.from_bytes(data, 'big')
     n_bits %= 64
     rotated = ((val << n_bits) | (val >> (64 - n_bits))) & ((1 << 64) - 1)
     return rotated.to_bytes(8, 'big')
 
 def generate_round_keys(master_key: bytes, rounds: int) -> list[bytes]:
-    """Возвращает список из (rounds + 1) ключей по 8 байт каждый:
-    keys[0]  — ключ "отбеливания" (XOR перед первым раундом)
-    keys[1..rounds] — ключ для каждого раунда."""
     keys = [master_key]
     current = master_key
     for i in range(1, rounds + 1):
@@ -106,9 +101,6 @@ def encrypt_block(block: bytes, round_keys: list[bytes]) -> bytes:
     return state
 
 def encrypt_block_trace(block: bytes, round_keys: list[bytes]) -> list[str]:
-    """То же самое, что encrypt_block, но возвращает лог состояния блока
-    после каждого шага — чтобы наглядно видеть, что именно происходит
-    на каждом раунде и чем последний раунд отличается от остальных."""
     rounds = len(round_keys) - 1
     state = xor_bytes(block, round_keys[0])
     log = [f"После отбеливания (XOR c K0): {state.hex().upper()}"]
@@ -144,9 +136,6 @@ def decrypt_block(cipher_block: bytes, round_keys: list[bytes]) -> bytes:
 # 5. Padding по ISO/IEC 7816-4
 
 def iso7816_pad(data: bytes, block_size: int = BLOCK_SIZE) -> bytes:
-    """Добавляет один байт-маркер 0x80, затем нули до конца блока.
-    Если данные уже кратны block_size — всё равно добавляется целый
-    лишний блок (маркер + нули), иначе конец данных будет неоднозначен."""
     pad_len = block_size - (len(data) % block_size)
     return data + b'\x80' + b'\x00' * (pad_len - 1)
 
@@ -164,7 +153,6 @@ def iso7816_unpad(data: bytes) -> bytes:
 
 
 def encrypt_data_cbc(plaintext: bytes, key_hex: str, rounds: int) -> bytes:
-    """Режим CBC: каждый блок сцепляется с предыдущим шифроблоком (нужен IV)."""
     master_key = bytes.fromhex(key_hex)
     round_keys = generate_round_keys(master_key, rounds)
     padded = iso7816_pad(plaintext, BLOCK_SIZE)
@@ -181,7 +169,6 @@ def encrypt_data_cbc(plaintext: bytes, key_hex: str, rounds: int) -> bytes:
         prev_block = cipher_block
 
     return b''.join(out_blocks)
-
 
 def decrypt_data_cbc(data: bytes, key_hex: str, rounds: int) -> bytes:
     if len(data) < BLOCK_SIZE or (len(data) - BLOCK_SIZE) % BLOCK_SIZE != 0:
@@ -208,9 +195,6 @@ def decrypt_data_cbc(data: bytes, key_hex: str, rounds: int) -> bytes:
 
 
 def encrypt_data_ecb(plaintext: bytes, key_hex: str, rounds: int) -> bytes:
-    """Режим ECB: каждый блок шифруется НЕЗАВИСИМО, без сцепления и без IV.
-    Одинаковые блоки открытого текста дают одинаковые блоки шифротекста —
-    это и есть слабость ECB, которую CBC устраняет."""
     master_key = bytes.fromhex(key_hex)
     round_keys = generate_round_keys(master_key, rounds)
     padded = iso7816_pad(plaintext, BLOCK_SIZE)
@@ -222,7 +206,6 @@ def encrypt_data_ecb(plaintext: bytes, key_hex: str, rounds: int) -> bytes:
         out_blocks.append(cipher_block)
 
     return b''.join(out_blocks)
-
 
 def decrypt_data_ecb(data: bytes, key_hex: str, rounds: int) -> bytes:
     if len(data) == 0 or len(data) % BLOCK_SIZE != 0:
@@ -239,7 +222,6 @@ def decrypt_data_ecb(data: bytes, key_hex: str, rounds: int) -> bytes:
 
     padded_plain = b''.join(plain_chunks)
     return iso7816_unpad(padded_plain)
-
 
 def encrypt_data(plaintext: bytes, key_hex: str, rounds: int, mode: str = "CBC") -> bytes:
     if mode == "ECB":
@@ -321,9 +303,6 @@ def show_round_keys_action():
     messagebox.showinfo("Раундовые ключи", "\n".join(lines))
 
 def show_trace_action():
-    """Показывает пошаговое состояние ПЕРВОГО 8-байтового блока текста
-    на каждом раунде — чтобы наглядно видеть, что S-box и XOR с ключом
-    идут на каждом раунде, а P-box пропускается только на последнем."""
     text = text_input.get("1.0", tk.END).rstrip("\n")
     key_hex = entry_key.get().strip()
     rounds = get_rounds()
@@ -337,7 +316,7 @@ def show_trace_action():
 
     data = text.encode('utf-8')
     padded = iso7816_pad(data, BLOCK_SIZE)
-    first_block = padded[:BLOCK_SIZE]  # берём только первый блок для наглядности
+    first_block = padded[:BLOCK_SIZE] 
 
     master_key = bytes.fromhex(key_hex)
     round_keys = generate_round_keys(master_key, rounds)
