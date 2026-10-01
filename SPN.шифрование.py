@@ -344,7 +344,7 @@ def build_gui():
     global root, text_input, entry_key, spin_rounds, text_result, mode_var
 
     root = tk.Tk()
-    root.title("SP-Сеть Шифрование (AES S-box, N раундов, ECB/CBC, ISO7816-4)")
+    root.title("SP-Сеть Шифрование")
     root.geometry("560x680")
 
     label_text = tk.Label(root, text="Входной текст (для шифрования) или Hex-шифротекст (для расшифровки):")
